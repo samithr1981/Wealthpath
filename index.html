@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WealthPath — Personal Finance Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0f1923;--ink2:#1e2d3d;--teal:#0d7377;--teal-l:#14a9ae;--teal-pale:#e6f7f7;
+  --amber:#e8a838;--amber-pale:#fdf4e3;--rose:#d64242;--rose-pale:#fdeaea;
+  --sage:#3d8b5e;--sage-pale:#eaf4ee;--paper:#f8f6f1;--white:#ffffff;
+  --border:#e4ddd1;--muted:#7a8694;
+  --mono:'JetBrains Mono',monospace;--serif:'Libre Baskerville',serif;--sans:'Outfit',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);min-height:100vh}
+
+/* TOPBAR */
+.topbar{background:var(--ink);color:#fff;padding:16px 32px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:200}
+.logo{font-family:var(--serif);font-size:20px}.logo span{color:var(--teal-l)}
+.topbar-hint{font-size:11px;color:rgba(255,255,255,0.35);font-family:var(--mono)}
+
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:390px 1fr;min-height:calc(100vh - 53px)}
+@media(max-width:880px){.layout{grid-template-columns:1fr}}
+
+/* LEFT PANEL */
+.inputs-panel{background:var(--white);border-right:1px solid var(--border);overflow-y:auto;max-height:calc(100vh - 53px);position:sticky;top:53px}
+@media(max-width:880px){.inputs-panel{position:static;max-height:none}}
+
+.sec-hdr{padding:14px 24px;background:var(--ink2);color:#fff;font-size:12px;font-family:var(--serif);letter-spacing:0.4px;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;transition:background 0.2s}
+.sec-hdr:hover{background:#243650}
+.sec-hdr .arr{margin-left:auto;font-size:10px;opacity:0.5;transition:transform 0.2s}
+.sec-hdr.open .arr{transform:rotate(180deg)}
+.sec-body{padding:18px 24px 20px;border-bottom:1px solid var(--border);display:none}
+.sec-body.open{display:block}
+
+/* FIELDS */
+.field{margin-bottom:13px}
+.field:last-child{margin-bottom:0}
+.field label{display:block;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:5px;font-family:var(--mono)}
+.field input[type=number],.field input[type=text],.field select{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-family:var(--sans);font-size:13px;color:var(--ink);background:var(--paper);transition:border-color 0.2s;-moz-appearance:textfield}
+.field input::-webkit-inner-spin-button,.field input::-webkit-outer-spin-button{-webkit-appearance:none}
+.field input:focus,.field select:focus{outline:none;border-color:var(--teal);background:#fff}
+.pre-wrap{position:relative}
+.pre{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none}
+.pre~input{padding-left:22px}
+.suf{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:11px;font-family:var(--mono);pointer-events:none}
+.suf~input{padding-right:36px}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* SLIDERS */
+.sl-field{margin-bottom:16px}
+.sl-field label{display:flex;justify-content:space-between;align-items:center;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:7px;font-family:var(--mono)}
+.sl-field label span{font-size:12px;color:var(--teal);font-weight:700;text-transform:none}
+input[type=range]{width:100%;-webkit-appearance:none;height:4px;border-radius:2px;background:linear-gradient(to right,var(--teal) 0%,var(--teal) var(--pct,50%),var(--border) var(--pct,50%),var(--border) 100%);outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;border:2.5px solid var(--teal);box-shadow:0 1px 5px rgba(0,0,0,0.12);cursor:pointer}
+
+/* GOAL CARDS */
+.goals-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.goal-card{border:1.5px solid var(--border);border-radius:10px;overflow:hidden;transition:opacity 0.2s}
+.goal-card.disabled{opacity:0.45}
+.goal-card-hdr{padding:10px 12px;background:var(--paper);display:flex;align-items:center;gap:8px}
+.goal-toggle{width:32px;height:18px;border-radius:9px;border:none;cursor:pointer;position:relative;flex-shrink:0;transition:background 0.2s}
+.goal-toggle.on{background:var(--teal)}
+.goal-toggle.off{background:var(--border)}
+.goal-toggle::after{content:'';position:absolute;top:3px;left:3px;width:12px;height:12px;border-radius:50%;background:#fff;transition:transform 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+.goal-toggle.on::after{transform:translateX(14px)}
+.goal-card-name{font-size:12px;font-weight:600;color:var(--ink);flex:1}
+.goal-del{background:none;border:none;cursor:pointer;color:var(--muted);font-size:15px;padding:2px 5px;border-radius:4px;transition:color 0.15s}
+.goal-del:hover{color:var(--rose)}
+.goal-card-body{padding:10px 12px 12px;background:#fff;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.goal-card-body .field{margin-bottom:0}
+.goal-card-body .field label{font-size:9px}
+.add-goal-btn{width:100%;padding:9px;background:none;border:1.5px dashed var(--border);border-radius:7px;color:var(--teal);font-family:var(--sans);font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s}
+.add-goal-btn:hover{border-color:var(--teal);background:var(--teal-pale)}
+
+/* COMPUTE BTN */
+.compute-wrap{padding:20px 24px 24px}
+.compute-btn{width:100%;padding:13px;background:var(--teal);color:#fff;border:none;border-radius:9px;font-family:var(--sans);font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.compute-btn:hover{background:var(--teal-l);box-shadow:0 4px 14px rgba(13,115,119,0.3);transform:translateY(-1px)}
+
+/* RIGHT PANEL */
+.results-panel{padding:32px 36px 80px;overflow-y:auto}
+@media(max-width:880px){.results-panel{padding:20px 18px 60px}}
+
+/* EMPTY STATE */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:55vh;text-align:center;gap:14px}
+.empty-state .ei{font-size:56px;opacity:0.1}
+.empty-state h2{font-family:var(--serif);font-size:24px;color:var(--ink2);opacity:0.35}
+.empty-state p{font-size:13px;color:var(--muted);max-width:280px;line-height:1.6}
+.results-content{display:none}
+.results-content.visible{display:block}
+
+/* HEALTH BANNER */
+.hb{border-radius:14px;padding:22px 26px;margin-bottom:24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.hb.good{background:linear-gradient(135deg,#0d7377,#14a9ae);color:#fff}
+.hb.warn{background:linear-gradient(135deg,#c87c0d,#e8a838);color:#fff}
+.hb.bad{background:linear-gradient(135deg,#b53333,#d64242);color:#fff}
+.hb-score{font-family:var(--serif);font-size:58px;font-weight:700;line-height:1;flex-shrink:0}
+.hb-text h3{font-family:var(--serif);font-size:18px;margin-bottom:5px}
+.hb-text p{font-size:12px;opacity:0.85;line-height:1.6;max-width:460px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{padding:3px 10px;border-radius:20px;font-size:10px;font-family:var(--mono);font-weight:500}
+.chip.ok{background:rgba(255,255,255,0.25);color:#fff}
+.chip.warn{background:rgba(255,200,0,0.3);color:#fff}
+.chip.bad{background:rgba(255,80,80,0.3);color:#fff}
+
+/* METRICS */
+.mgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:24px}
+.mc{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px 20px;position:relative;overflow:hidden;transition:transform 0.15s,box-shadow 0.15s}
+.mc:hover{transform:translateY(-2px);box-shadow:0 5px 20px rgba(0,0,0,0.06)}
+.mc::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px}
+.mc.teal::after{background:var(--teal)}.mc.amber::after{background:var(--amber)}.mc.rose::after{background:var(--rose)}.mc.sage::after{background:var(--sage)}.mc.ink::after{background:var(--ink)}
+.ml{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-family:var(--mono);margin-bottom:7px}
+.mv{font-family:var(--serif);font-size:22px;font-weight:700;color:var(--ink);line-height:1;margin-bottom:3px}
+.ms{font-size:11px;color:var(--muted)}
+
+/* SECTION TITLE */
+.rt{font-family:var(--serif);font-size:18px;color:var(--ink);margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.rt::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* PANEL */
+.panel{background:#fff;border:1px solid var(--border);border-radius:12px;padding:22px;margin-bottom:22px}
+
+/* CASHFLOW */
+.cf-row{display:flex;align-items:center;gap:12px;margin-bottom:9px}
+.cf-lbl{width:155px;font-size:11px;color:var(--muted);flex-shrink:0}
+.cf-track{flex:1;background:var(--paper);border-radius:3px;height:22px;overflow:hidden}
+.cf-bar{height:100%;border-radius:3px;display:flex;align-items:center;padding-left:9px;font-size:10px;font-family:var(--mono);color:rgba(255,255,255,0.9);transition:width 0.7s ease;white-space:nowrap;overflow:hidden}
+.cf-amt{width:82px;text-align:right;font-family:var(--mono);font-size:11px;color:var(--ink);flex-shrink:0}
+.cf-surplus{border-radius:7px;padding:9px 13px;display:flex;justify-content:space-between;align-items:center;margin-top:10px}
+.cf-surplus.ok{background:var(--teal-pale);border:1px solid rgba(13,115,119,0.2)}
+.cf-surplus.deficit{background:var(--rose-pale);border:1px solid rgba(214,66,66,0.2)}
+.cf-surplus .cfl{font-size:12px;font-weight:600}.cf-surplus.ok .cfl{color:var(--teal)}.cf-surplus.deficit .cfl{color:var(--rose)}
+.cf-surplus .cfv{font-family:var(--mono);font-size:13px;font-weight:700}.cf-surplus.ok .cfv{color:var(--teal)}.cf-surplus.deficit .cfv{color:var(--rose)}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse}
+thead{background:var(--ink)}
+th{padding:10px 14px;font-size:9px;text-transform:uppercase;letter-spacing:0.7px;color:rgba(255,255,255,0.55);font-family:var(--mono);text-align:left;font-weight:500}
+th.r{text-align:right}
+td{padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(13,115,119,0.025)}
+td.r{text-align:right;font-family:var(--mono);font-size:11px}
+.trow td{background:var(--teal-pale);font-weight:600;border-top:2px solid rgba(13,115,119,0.15)}
+.trow td.r{color:var(--teal)}
+.disabled-goal-row td{opacity:0.4;text-decoration:line-through}
+
+/* SIP GAUGE */
+.sip-track{background:var(--paper);border-radius:7px;height:36px;position:relative;overflow:hidden;margin:14px 0 6px}
+.sip-bar{height:100%;border-radius:7px;background:linear-gradient(90deg,var(--ink),var(--ink2));display:flex;align-items:center;padding-left:12px;font-size:11px;font-family:var(--mono);color:rgba(255,255,255,0.8);transition:width 0.8s ease;white-space:nowrap;overflow:hidden}
+.sip-line{position:absolute;top:0;bottom:0;width:3px;border-radius:2px;background:var(--teal);transition:left 0.8s ease}
+.sip-line-lbl{position:absolute;top:-16px;font-size:9px;font-family:var(--mono);color:var(--teal);transform:translateX(-50%);white-space:nowrap;transition:left 0.8s ease}
+
+/* BUCKETS */
+.brow{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px}
+@media(max-width:780px){.brow{grid-template-columns:1fr 1fr}}
+@media(max-width:500px){.brow{grid-template-columns:1fr}}
+.bbox{border-radius:12px;padding:20px;color:#fff;position:relative;overflow:hidden}
+.bbox::before{content:'';position:absolute;top:-15px;right:-15px;width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,0.07)}
+.ba{background:linear-gradient(135deg,#0d7377,#14a9ae)}
+.bb{background:linear-gradient(135deg,#1e2d3d,#2a4a6e)}
+.bc{background:linear-gradient(135deg,#b8861a,#e8a838)}
+.btag{font-size:9px;font-family:var(--mono);letter-spacing:1px;opacity:0.65;margin-bottom:5px;text-transform:uppercase}
+.btitle{font-family:var(--serif);font-size:16px;font-weight:700;margin-bottom:3px}
+.bage{font-size:10px;opacity:0.65;margin-bottom:14px}
+.bstat{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.1);font-size:11px}
+.bstat:last-child{border-bottom:none}
+.bstat .bk{opacity:0.65}.bstat .bv{font-family:var(--mono);font-size:10px;font-weight:600}
+
+/* BUCKET SUMMARY */
+.bsum{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 22px;margin-bottom:22px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:space-around}
+.bsi-lbl{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-family:var(--mono);margin-bottom:3px}
+.bsi-val{font-family:var(--serif);font-size:18px;font-weight:700;color:var(--ink)}
+
+/* NET WORTH BARS */
+.nw-row{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.nw-yr{width:46px;font-family:var(--mono);font-size:10px;color:var(--muted);flex-shrink:0;text-align:right}
+.nw-age{width:52px;font-size:10px;color:var(--muted);flex-shrink:0}
+.nw-track{flex:1;background:var(--paper);border-radius:3px;height:18px;overflow:hidden}
+.nw-fill{height:100%;border-radius:3px;transition:width 0.8s ease;display:flex;align-items:center;padding-left:7px;font-size:9px;font-family:var(--mono);color:rgba(255,255,255,0.85);white-space:nowrap;overflow:hidden}
+.nw-val{width:90px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--ink);flex-shrink:0}
+
+/* WITHDRAWAL TABLE */
+.wt-wrap{background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:22px;max-height:380px;overflow-y:auto}
+
+/* ALERTS */
+.alert{border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:12px;line-height:1.6;display:flex;gap:10px;align-items:flex-start}
+.ai{font-size:16px;flex-shrink:0;margin-top:1px}
+.alert.warn{background:var(--amber-pale);border:1px solid rgba(232,168,56,0.25)}
+.alert.bad{background:var(--rose-pale);border:1px solid rgba(214,66,66,0.25)}
+.alert.good{background:var(--sage-pale);border:1px solid rgba(61,139,94,0.25)}
+.alert strong{color:var(--ink)}
+
+/* BADGES */
+.badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:9px;font-family:var(--mono);font-weight:600}
+.bt{background:var(--teal-pale);color:var(--teal)}.ba2{background:var(--amber-pale);color:#7a5000}.br{background:var(--rose-pale);color:var(--rose)}.bs{background:var(--sage-pale);color:var(--sage)}
+
+@keyframes fu{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.anim{animation:fu 0.35s ease backwards}
+.d1{animation-delay:0.04s}.d2{animation-delay:0.1s}.d3{animation-delay:0.16s}.d4{animation-delay:0.22s}.d5{animation-delay:0.28s}.d6{animation-delay:0.34s}.d7{animation-delay:0.4s}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">Wealth<span>Path</span></div>
+  <div class="topbar-hint">Personal Finance Planner · All amounts in ₹</div>
+</div>
+
+<div class="layout">
+
+<!-- ══════════ LEFT: INPUTS ══════════ -->
+<div class="inputs-panel">
+
+  <!-- FAMILY -->
+  <div class="sec-hdr open" onclick="toggleSec(this)">
+    <span>👨‍👩‍👧‍👦</span> Family Profile <span class="arr">▼</span>
+  </div>
+  <div class="sec-body open">
+    <div class="frow">
+      <div class="field"><label>Person 1 Age</label><div class="pre-wrap"><input type="number" id="selfAge" value="43" min="18" max="65"><span class="suf">yrs</span></div></div>
+      <div class="field"><label>Person 2 Age</label><div class="pre-wrap"><input type="number" id="spouseAge" value="40" min="18" max="65"><span class="suf">yrs</span></div></div>
+    </div>
+    <div class="frow">
+      <div class="field"><label>Retirement Age</label><div class="pre-wrap"><input type="number" id="retireAge" value="60" min="40" max="70"><span class="suf">yrs</span></div></div>
+      <div class="field"><label>Life Expectancy</label><div class="pre-wrap"><input type="number" id="lifeExp" value="90" min="70" max="100"><span class="suf">yrs</span></div></div>
+    </div>
+    <div class="field"><label>No. of Children</label>
+      <select id="numChildren" onchange="updateChildrenFields()">
+        <option value="0">0 — No children</option>
+        <option value="1">1 child</option>
+        <option value="2" selected>2 children</option>
+        <option value="3">3 children</option>
+      </select>
+    </div>
+    <div id="childrenAges"></div>
+  </div>
+
+  <!-- INCOME -->
+  <div class="sec-hdr open" onclick="toggleSec(this)">
+    <span>💰</span> Income (Annual, After Tax) <span class="arr">▼</span>
+  </div>
+  <div class="sec-body open">
+    <div class="field"><label>Person 1 Salary</label><div class="pre-wrap"><span class="pre">₹</span><input type="number" id="selfSalary" value="6780000"></div></div>
+    <div class="field"><label>Person 1 Bonus/Incentive</label><div class="pre-wrap"><span class="pre">₹</span><input type="number" id="selfBonus" value="1320000"></div></div>
+    <div class="field"><label>Person 2 Salary</label><div class="pre-wrap"><span class="pre">₹</span><input type="number" id="spouseSalary" value="1076460"></div></div>
+    <div class="field"><label>Rental / Other Income</label><div class="pre-wrap"><span class="pre">₹</span><input type="number" id="otherIncome" value="336000"></div></div>
+  </div>
+
+  <!-- EXPENSES -->
+  <div class="sec-hdr open" onclick="toggleSec(this)">
+    <span>🧾</span> Expenses &amp; Liabilities (Annual) <span class="arr">▼</span>
+  </div>
+  <div class="sec-body open">
+    <div class="field"><label>Annual Living Expenses</label><div class="pre-wrap"><span class="pre">₹</span><input type="number" id="expenses" value="3684840"></div></div>
+    <div class="field"><label>Insurance Premiums</label><div class="pre-wrap"><span class="pre">₹</span><input type="number" id="insurance" value="217438"></div></div>
+    <div class="field"><label>Loan EMIs</label><div class="pre-wrap"><span class="pre">₹</span><input type="number" id="emis" value="265200"></div></div>
+    <div class="field"><label>Monthly Retirement Spend (Today's ₹)</label><div class="pre-wrap"><span class="pre">₹</span><input type="number" id="retireExpenses" value="150000"></div></div>
+  </div>
+
+  <!-- ASSETS -->
+  <div class="sec-hdr open" onclick="toggleSec(this)">
+    <span>🏦</span> Current Assets <span class="arr">▼</span>
+  </div>
+  <div class="sec-body open">
+    <div class="field"><label>Equity Portfolio</label><div class="pre-wrap"><span class="pre">₹</span><input type="number" id="equity" value="30635101"></div></div>
+    <div class="field"><label>Debt / Fixed Income</label><div class="pre-wrap"><span class="pre">₹</span><input type="number" id="debt" value="16577317"></div></div>
+    <div class="field"><label>Real Estate (Investment)</label><div class="pre-wrap"><span class="pre">₹</span><input type="number" id="realEstate" value="10000000"></div></div>
+    <div class="field"><label>Outstanding Loans</label><div class="pre-wrap"><span class="pre">₹</span><input type="number" id="loans" value="530000"></div></div>
+  </div>
+
+  <!-- RETURNS -->
+  <div class="sec-hdr" onclick="toggleSec(this)">
+    <span>📈</span> Return &amp; Inflation Assumptions <span class="arr">▼</span>
+  </div>
+  <div class="sec-body">
+    <div class="sl-field"><label>Equity Returns <span id="eRL">10%</span></label><input type="range" id="equityReturn" min="6" max="16" step="0.5" value="10" oninput="updateSlider(this,'eRL')"></div>
+    <div class="sl-field"><label>Debt Returns <span id="dRL">6%</span></label><input type="range" id="debtReturn" min="4" max="10" step="0.5" value="6" oninput="updateSlider(this,'dRL')"></div>
+    <div class="sl-field"><label>General Inflation <span id="iL">7%</span></label><input type="range" id="inflation" min="4" max="12" step="0.5" value="7" oninput="updateSlider(this,'iL')"></div>
+    <div class="sl-field"><label>Retirement Portfolio Return <span id="rRL">7%</span></label><input type="range" id="retireReturn" min="5" max="10" step="0.5" value="7" oninput="updateSlider(this,'rRL')"></div>
+    <div class="sl-field"><label>Education Inflation <span id="eiL">10%</span></label><input type="range" id="eduInflation" min="6" max="15" step="0.5" value="10" oninput="updateSlider(this,'eiL')"></div>
+  </div>
+
+  <!-- GOALS -->
+  <div class="sec-hdr open" onclick="toggleSec(this)">
+    <span>🎯</span> Life Goals <span class="arr">▼</span>
+  </div>
+  <div class="sec-body open">
+    <div style="font-size:10px;color:var(--muted);margin-bottom:10px;font-family:var(--mono)">Toggle goals on/off to see how each affects your plan</div>
+    <div class="goals-list" id="goalsList"></div>
+    <button class="add-goal-btn" onclick="addGoal()">+ Add Goal</button>
+  </div>
+
+  <div class="compute-wrap">
+    <button class="compute-btn" onclick="compute()">✦ &nbsp;Compute My Plan</button>
+  </div>
+
+</div>
+
+<!-- ══════════ RIGHT: RESULTS ══════════ -->
+<div class="results-panel">
+
+  <div class="empty-state" id="emptyState">
+    <div class="ei">✦</div>
+    <h2>Your plan awaits</h2>
+    <p>Fill in your details and click <strong>Compute My Plan</strong> to see your complete financial roadmap</p>
+  </div>
+
+  <div class="results-content" id="resultsContent">
+    <div class="anim d1" id="healthBanner"></div>
+    <div class="mgrid anim d2" id="metricsGrid"></div>
+    <div class="anim d3">
+      <div class="rt">💸 Monthly Cash Flow</div>
+      <div class="panel" id="cashflowPanel" style="padding:20px"></div>
+    </div>
+    <div class="anim d4">
+      <div class="rt">🎯 Goal Funding Plan</div>
+      <div id="alertsBox"></div>
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:22px" id="goalsTable"></div>
+    </div>
+    <div class="anim d5">
+      <div class="rt">⚖️ Monthly SIP Required vs Surplus</div>
+      <div class="panel" id="sipPanel"></div>
+    </div>
+    <div class="anim d6">
+      <div class="rt">🪣 3-Bucket Retirement Strategy</div>
+      <div class="brow" id="bucketsRow"></div>
+      <div class="bsum" id="bucketSummary"></div>
+      <div class="panel" id="nwPanel">
+        <div style="font-family:var(--serif);font-size:14px;font-weight:700;margin-bottom:14px;color:var(--ink)">📊 Net Worth Journey to Retirement</div>
+        <div id="nwBars"></div>
+      </div>
+    </div>
+    <div class="anim d7">
+      <div class="rt">📅 Post-Retirement Withdrawal Schedule</div>
+      <div class="wt-wrap" id="withdrawalTable"></div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════
+const CY = new Date().getFullYear();
+let goals = [
+  {id:1, name:"Child 1 — Education",   type:"education", targetYear:2029, pv:4000000, enabled:true},
+  {id:2, name:"Child 2 — Education",   type:"education", targetYear:2032, pv:5000000, enabled:true},
+  {id:3, name:"Child 1 — Post-Grad",   type:"education", targetYear:2033, pv:6000000, enabled:true},
+  {id:4, name:"Child 2 — Post-Grad",   type:"education", targetYear:2036, pv:7000000, enabled:true},
+  {id:5, name:"Child 1 — Startup Fund",type:"general",   targetYear:2036, pv:2000000, enabled:true},
+  {id:6, name:"Child 2 — Startup Fund",type:"general",   targetYear:2038, pv:2000000, enabled:true},
+];
+let nextId = 7;
+const GOAL_TYPES = ["education","marriage","home","travel","vehicle","business","medical","other"];
+
+// ═══════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════
+function toggleSec(h){
+  h.classList.toggle('open');
+  h.nextElementSibling.classList.toggle('open');
+}
+
+function updateSlider(el, lblId){
+  const v = parseFloat(el.value);
+  document.getElementById(lblId).textContent = v + '%';
+  const pct = ((v - parseFloat(el.min)) / (parseFloat(el.max) - parseFloat(el.min)) * 100).toFixed(1);
+  el.style.setProperty('--pct', pct + '%');
+}
+
+function initSliders(){
+  document.querySelectorAll('input[type=range]').forEach(el => {
+    const pct = ((parseFloat(el.value)-parseFloat(el.min))/(parseFloat(el.max)-parseFloat(el.min))*100).toFixed(1);
+    el.style.setProperty('--pct', pct+'%');
+  });
+}
+
+function updateChildrenFields(){
+  const n = parseInt(document.getElementById('numChildren').value);
+  const div = document.getElementById('childrenAges');
+  div.innerHTML = '';
+  for(let i=1;i<=n;i++){
+    const d = document.createElement('div');
+    d.className = 'field';
+    d.innerHTML = `<label>Child ${i} Current Age</label><div class="pre-wrap"><input type="number" id="childAge${i}" value="${[12,9,6][i-1]||5}" min="0" max="20"><span class="suf">yrs</span></div>`;
+    div.appendChild(d);
+  }
+}
+
+// Format numbers
+function fmt(v){
+  if(v===undefined||v===null||isNaN(v)) return '—';
+  const a=Math.abs(v);
+  if(a>=10000000) return '₹'+(v/10000000).toFixed(2)+' Cr';
+  if(a>=100000)   return '₹'+(v/100000).toFixed(2)+' L';
+  if(a>=1000)     return '₹'+(v/1000).toFixed(1)+' K';
+  return '₹'+Math.round(v).toLocaleString('en-IN');
+}
+
+// ═══════════════════════════════════════════
+//  GOALS UI
+// ═══════════════════════════════════════════
+function renderGoals(){
+  const list = document.getElementById('goalsList');
+  list.innerHTML = '';
+  goals.forEach(g => {
+    const card = document.createElement('div');
+    card.className = 'goal-card' + (g.enabled ? '' : ' disabled');
+    card.innerHTML = `
+      <div class="goal-card-hdr">
+        <button class="goal-toggle ${g.enabled?'on':'off'}" onclick="toggleGoal(${g.id})" title="${g.enabled?'Disable':'Enable'} goal"></button>
+        <span class="goal-card-name">${g.name}</span>
+        <button class="goal-del" onclick="removeGoal(${g.id})" title="Remove goal">×</button>
+      </div>
+      <div class="goal-card-body">
+        <div class="field"><label>Goal Name</label><input type="text" value="${g.name}" onchange="updateGoal(${g.id},'name',this.value)"></div>
+        <div class="field"><label>Type</label>
+          <select onchange="updateGoal(${g.id},'type',this.value)">
+            ${GOAL_TYPES.map(t=>`<option value="${t}" ${t===g.type?'selected':''}>${t[0].toUpperCase()+t.slice(1)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field"><label>Target Year</label><input type="number" value="${g.targetYear}" min="${CY+1}" max="${CY+45}" onchange="updateGoal(${g.id},'targetYear',+this.value)"></div>
+        <div class="field"><label>Today's Value (₹)</label><input type="number" value="${g.pv}" onchange="updateGoal(${g.id},'pv',+this.value)"></div>
+      </div>`;
+    list.appendChild(card);
+  });
+}
+
+function toggleGoal(id){
+  const g = goals.find(g=>g.id===id);
+  if(g){ g.enabled = !g.enabled; renderGoals(); }
+}
+
+function addGoal(){
+  goals.push({id:nextId++, name:"New Goal", type:"general", targetYear:CY+5, pv:500000, enabled:true});
+  renderGoals();
+}
+
+function removeGoal(id){
+  goals = goals.filter(g=>g.id!==id);
+  renderGoals();
+}
+
+function updateGoal(id, key, val){
+  const g = goals.find(g=>g.id===id);
+  if(g){ g[key]=val; if(key==='name') renderGoals(); }
+}
+
+// ═══════════════════════════════════════════
+//  FINANCIAL ENGINE
+// ═══════════════════════════════════════════
+function getP(){
+  return {
+    selfAge:     +document.getElementById('selfAge').value    || 43,
+    spouseAge:   +document.getElementById('spouseAge').value  || 40,
+    retireAge:   +document.getElementById('retireAge').value  || 60,
+    lifeExp:     +document.getElementById('lifeExp').value    || 90,
+    selfSalary:  +document.getElementById('selfSalary').value || 0,
+    selfBonus:   +document.getElementById('selfBonus').value  || 0,
+    spouseSalary:+document.getElementById('spouseSalary').value|| 0,
+    otherIncome: +document.getElementById('otherIncome').value|| 0,
+    expenses:    +document.getElementById('expenses').value   || 0,
+    insurance:   +document.getElementById('insurance').value  || 0,
+    emis:        +document.getElementById('emis').value       || 0,
+    retireExp:   +document.getElementById('retireExpenses').value||150000,
+    equity:      +document.getElementById('equity').value     || 0,
+    debt:        +document.getElementById('debt').value       || 0,
+    realEstate:  +document.getElementById('realEstate').value || 0,
+    loans:       +document.getElementById('loans').value      || 0,
+    eqRet:       +document.getElementById('equityReturn').value/100 || 0.10,
+    dtRet:       +document.getElementById('debtReturn').value/100  || 0.06,
+    infl:        +document.getElementById('inflation').value/100   || 0.07,
+    retRet:      +document.getElementById('retireReturn').value/100|| 0.07,
+    eduInfl:     +document.getElementById('eduInflation').value/100|| 0.10,
+  };
+}
+
+function fv(pv,r,n){ return pv*Math.pow(1+r,n); }
+
+function sipForFV(fvTarget, annualRate, months){
+  if(months<=0) return fvTarget;
+  const r = annualRate/12;
+  if(r===0) return fvTarget/months;
+  return fvTarget*r/(Math.pow(1+r,months)-1);
+}
+
+// EXACT BUCKET FORMULA verified against advisor's Excel:
+// Corpus at bucket-start = PMT1 * [(ratio^n-1)/(ratio-1)]
+//   PMT1 = retireAnnual0 * (1+infl)^(yearsFromRetire+1)
+//   ratio = (1+infl)/(1+debtReturn)   [always 6% annuity discount]
+// Amount needed AT RETIREMENT = corpus / (1+growthRate)^yearsFromRetire
+function bucketCalc(ann0, infl, annuityRate, growthRate, bktYrs, yrFromRetire){
+  const pmt1  = ann0 * Math.pow(1+infl, yrFromRetire+1);
+  const ratio = (1+infl)/(1+annuityRate);
+  const corpus = pmt1*(Math.pow(ratio,bktYrs)-1)/(ratio-1);
+  const atRetire = corpus/Math.pow(1+growthRate, yrFromRetire);
+  return { corpus, atRetire };
+}
+
+function compute(){
+  const p = getP();
+
+  // CORE TIME CALCULATIONS
+  const yrsToRetire = p.retireAge - p.selfAge;
+  // Corpus must cover BOTH persons until the younger one reaches lifeExp
+  // If person1 is older: when younger person reaches lifeExp, older person is lifeExp+(age diff) years old
+  // yrsInRetire = lifeExp + max(0, selfAge-spouseAge) - retireAge
+  const ageDiff     = p.selfAge - p.spouseAge;          // +ve = person1 older
+  const lastSelfAge = p.lifeExp + Math.max(0, ageDiff); // self's age when YOUNGER person hits lifeExp
+  const yrsInRetire = lastSelfAge - p.retireAge;
+  const retireYear  = CY + yrsToRetire;
+
+  if(yrsToRetire <= 0){
+    alert("Retirement age must be greater than current age!"); return;
+  }
+
+  // INCOME & CASHFLOW
+  const totalIncome   = p.selfSalary + p.selfBonus + p.spouseSalary + p.otherIncome;
+  const totalOutflows = p.expenses + p.insurance + p.emis;
+  const annualSurplus = totalIncome - totalOutflows;
+  const mthSurplus    = annualSurplus / 12;
+
+  // NET WORTH
+  const totalAssets = p.equity + p.debt + p.realEstate;
+  const netWorth    = totalAssets - p.loans;
+
+  // GOALS — only enabled ones count toward SIP
+  const activeGoals = goals.filter(g=>g.enabled);
+  const goalResults = goals.map(g => {
+    const yrsLeft = g.targetYear - CY;
+    if(yrsLeft <= 0) return {...g, yrsLeft:0, fvGoal:g.pv, sip:0, lump:g.pv, targetRet:0};
+    const inflRate = g.type==='education' ? p.eduInfl : p.infl;
+    const targetRet = g.type==='education'
+      ? (yrsLeft<=5 ? p.dtRet : p.dtRet+0.01)
+      : (yrsLeft>=10 ? p.eqRet : p.dtRet+0.01);
+    const fvGoal = fv(g.pv, inflRate, yrsLeft);
+    const sip    = g.enabled ? sipForFV(fvGoal, targetRet, yrsLeft*12) : 0;
+    const lump   = fvGoal / Math.pow(1+targetRet, yrsLeft);
+    return {...g, yrsLeft, fvGoal, sip, lump, targetRet, inflRate};
+  });
+
+  const activeGoalSip = goalResults.filter(g=>g.enabled).reduce((s,g)=>s+g.sip, 0);
+
+  // RETIREMENT CORPUS (bucket strategy)
+  const retireAnnual0 = fv(p.retireExp * 12, p.infl, yrsToRetire); // first year annual at retirement
+
+  // Bucket durations: A=15yrs, B=10yrs, C=remaining
+  const bktC_yrs = Math.max(1, yrsInRetire - 25);
+  const bktDurs  = [15, 10, bktC_yrs];
+  const bktStYrs = [0, 15, 25];
+  // A uses debtReturn to grow, B&C use retireReturn+1% (8% for Samith)
+  const bktGrowth= [p.dtRet, p.retRet+0.01, p.retRet+0.01];
+
+  let buckets = [], investSum = 0;
+  for(let b=0;b<3;b++){
+    const {corpus, atRetire} = bucketCalc(retireAnnual0, p.infl, p.dtRet, bktGrowth[b], bktDurs[b], bktStYrs[b]);
+    buckets.push({
+      name: ['Early Retirement','Mid Retirement','Late Retirement'][b],
+      tag:  ['Bucket A','Bucket B','Bucket C'][b],
+      ageRange: [
+        `${p.retireAge}–${p.retireAge+15}`,
+        `${p.retireAge+15}–${p.retireAge+25}`,
+        `${p.retireAge+25}–${lastSelfAge}`
+      ][b],
+      years: bktDurs[b], corpus, atRetire, growth: bktGrowth[b]
+    });
+    investSum += atRetire;
+  }
+  const emergency    = investSum * 0.05;
+  const corpusNeeded = investSum + emergency;
+
+  // Existing portfolio FV at retirement
+  const existingFV    = fv(p.equity, p.eqRet, yrsToRetire) + fv(p.debt, p.dtRet, yrsToRetire);
+  const freshNeeded   = Math.max(0, corpusNeeded - existingFV);
+  const retireSip     = sipForFV(freshNeeded, p.eqRet*0.6+p.dtRet*0.4, yrsToRetire*12);
+
+  // Retirement as a goal entry for display
+  const retireGoalRow = {
+    id:999, name:'Retirement Corpus', type:'retirement', enabled:true,
+    targetYear:retireYear, yrsLeft:yrsToRetire,
+    pv:0, fvGoal:corpusNeeded, sip:retireSip,
+    lump: freshNeeded/Math.pow(1.08, yrsToRetire),
+    targetRet: p.eqRet*0.6+p.dtRet*0.4
+  };
+  const allGoalResults = [...goalResults, retireGoalRow];
+  const totalSip = activeGoalSip + retireSip;
+
+  // SIP gap
+  const sipGap   = totalSip - mthSurplus;
+  const coverage = mthSurplus / Math.max(totalSip, 1);
+
+  // Health score
+  let score = 100;
+  if(coverage < 0.9) score -= Math.round((0.9-coverage)*80);
+  if(netWorth < 0)   score -= 20;
+  if(yrsToRetire<10) score -= 10;
+  score = Math.max(0, Math.min(100, score));
+
+  // Net worth projection
+  const nwProjection = [];
+  for(let yr=0; yr<=yrsToRetire; yr+=3){
+    nwProjection.push({
+      year: CY+yr, age: p.selfAge+yr,
+      nw: fv(p.equity,p.eqRet,yr) + fv(p.debt,p.dtRet,yr) + fv(p.realEstate,p.infl,yr)
+    });
+  }
+
+  // Withdrawal schedule
+  const withdrawals = [];
+  for(let yr=0; yr<yrsInRetire; yr++){
+    withdrawals.push({
+      selfAge: p.retireAge+yr,
+      spouseAge: p.spouseAge+(p.retireAge-p.selfAge)+yr,
+      year: retireYear+yr,
+      amount: retireAnnual0*Math.pow(1+p.infl,yr),
+      bucket: yr<15?'A':yr<25?'B':'C'
+    });
+  }
+
+  // ═══ RENDER ALL ═══
+  document.getElementById('emptyState').style.display = 'none';
+  const rc = document.getElementById('resultsContent');
+  rc.classList.add('visible');
+  rc.querySelectorAll('.anim').forEach(el=>{el.style.animation='none';void el.offsetHeight;el.style.animation='';});
+
+  renderHealth(score, coverage, sipGap, netWorth, yrsToRetire);
+  renderMetrics(totalIncome, annualSurplus, netWorth, corpusNeeded, existingFV, freshNeeded, retireAnnual0, p, yrsToRetire, retireYear);
+  renderCashflow(totalIncome, p, annualSurplus);
+  renderGoalsTable(allGoalResults, totalSip);
+  renderSipGauge(totalSip, mthSurplus, sipGap);
+  renderBuckets(buckets, emergency, corpusNeeded, p, lastSelfAge, retireYear);
+  renderNW(nwProjection);
+  renderWithdrawals(withdrawals);
+}
+
+// ═══════════════════════════════════════════
+//  RENDER FUNCTIONS
+// ═══════════════════════════════════════════
+function renderHealth(score, coverage, gap, nw, yrsToRetire){
+  const el = document.getElementById('healthBanner');
+  const cls = score>=70?'good':score>=40?'warn':'bad';
+  const title = score>=80?'Finances are on solid ground':score>=60?'Good foundation — some gaps to close':score>=40?'Key areas need attention':'Significant planning required';
+  const chips = [
+    {t:`Surplus Coverage: ${(coverage*100).toFixed(0)}%`, c:coverage>=0.9?'ok':coverage>=0.7?'warn':'bad'},
+    {t:`Net Worth: ${fmt(nw)}`,  c:nw>0?'ok':'bad'},
+    {t:`Years to Retire: ${yrsToRetire}`, c:yrsToRetire>=15?'ok':yrsToRetire>=8?'warn':'bad'},
+    {t:`SIP Gap: ${gap<=0?'✓ Covered':fmt(gap)+' short'}`, c:gap<=0?'ok':gap<50000?'warn':'bad'},
+  ];
+  el.className = `hb ${cls} anim d1`;
+  el.innerHTML = `
+    <div class="hb-score">${score}</div>
+    <div class="hb-text">
+      <h3>${score>=70?'🟢':score>=40?'🟡':'🔴'} ${title}</h3>
+      <p>Score based on surplus coverage, net worth, time horizon, and goal alignment.</p>
+      <div class="chips">${chips.map(c=>`<span class="chip ${c.c}">${c.t}</span>`).join('')}</div>
+    </div>`;
+}
+
+function renderMetrics(ti, surplus, nw, corpus, existFV, fresh, annRet0, p, yrsToRetire, retireYear){
+  document.getElementById('metricsGrid').innerHTML = [
+    {l:'Annual Income',       v:fmt(ti),              s:'Total family income',        c:'teal'},
+    {l:'Monthly Surplus',     v:fmt(surplus/12),       s:surplus>0?'Available to invest':'⚠️ Deficit!', c:surplus>0?'sage':'rose'},
+    {l:'Net Worth Today',     v:fmt(nw),              s:'Assets minus liabilities',   c:'ink'},
+    {l:'Retirement Corpus',   v:fmt(corpus),           s:`3-bucket total by age ${p.retireAge}`, c:'amber'},
+    {l:'Year 1 Retire Spend', v:fmt(annRet0/12)+'/mo', s:`First month at age ${p.retireAge} (${retireYear})`, c:'teal'},
+    {l:'Fresh Corpus Needed', v:fmt(fresh),            s:fresh<=0?'✓ Portfolio covers it!':'Above existing investments', c:fresh<=0?'sage':'rose'},
+  ].map(m=>`<div class="mc ${m.c}"><div class="ml">${m.l}</div><div class="mv">${m.v}</div><div class="ms">${m.s}</div></div>`).join('');
+}
+
+function renderCashflow(ti, p, surplus){
+  const rows = [
+    {label:'Total Income',       amt:ti,         pct:100,  color:'linear-gradient(90deg,#0d7377,#14a9ae)'},
+    {label:'Living Expenses',    amt:p.expenses, pct:p.expenses/ti*92, color:'#d64242'},
+    {label:'Insurance',          amt:p.insurance,pct:p.insurance/ti*92,color:'#e8a838'},
+    {label:'Loan EMIs',          amt:p.emis,     pct:p.emis/ti*92,     color:'#7a8694'},
+  ];
+  const isDeficit = surplus < 0;
+  document.getElementById('cashflowPanel').innerHTML =
+    rows.map(r=>`<div class="cf-row">
+      <div class="cf-lbl">${r.label}</div>
+      <div class="cf-track"><div class="cf-bar" style="width:${Math.max(4,r.pct).toFixed(1)}%;background:${r.color}">${fmt(r.amt)}</div></div>
+      <div class="cf-amt">${fmt(r.amt)}</div>
+    </div>`).join('')+
+    `<div class="cf-surplus ${isDeficit?'deficit':'ok'}">
+      <span class="cfl">${isDeficit?'⚠️ Monthly Deficit':'✓ Monthly Investible Surplus'}</span>
+      <span class="cfv">${fmt(surplus/12)}/mo</span>
+    </div>`;
+}
+
+function renderGoalsTable(goalResults, totalSip){
+  // Alerts
+  const alertsEl = document.getElementById('alertsBox');
+  const urgent = goalResults.filter(g=>g.enabled&&g.yrsLeft<=5&&g.yrsLeft>0&&g.id!==999);
+  alertsEl.innerHTML = urgent.length
+    ? `<div class="alert warn"><div class="ai">⏰</div><div><strong>Urgent:</strong> ${urgent.map(g=>g.name).join(', ')} — within 5 years. Move these funds to low-risk instruments now.</div></div>`
+    : '';
+
+  const typeColor = {education:'bt',marriage:'br',home:'ba2',retirement:'ba2',general:'bs',travel:'bs',vehicle:'bs',business:'bt',medical:'br',other:'bs'};
+  document.getElementById('goalsTable').innerHTML = `<table>
+    <thead><tr>
+      <th>Goal</th><th>Status</th><th>Year</th><th>Type</th><th class="r">Today's Value</th>
+      <th class="r">Future Value</th><th class="r">Return</th><th class="r">Monthly SIP</th>
+    </tr></thead>
+    <tbody>
+    ${goalResults.map(g=>`<tr class="${(!g.enabled&&g.id!==999)?'disabled-goal-row':''}">
+      <td><strong>${g.name}</strong></td>
+      <td>${g.id===999?'<span class="badge bt">Core</span>':g.enabled?'<span class="badge bs">Active</span>':'<span class="badge" style="background:#f0f0f0;color:#999">Off</span>'}</td>
+      <td><span class="badge bt">${g.targetYear}</span></td>
+      <td><span class="badge ${typeColor[g.type]||'bs'}">${g.type}</span></td>
+      <td class="r">${g.pv?fmt(g.pv):'—'}</td>
+      <td class="r">${fmt(g.fvGoal)}</td>
+      <td class="r">${g.targetRet?(g.targetRet*100).toFixed(1)+'%':'—'}</td>
+      <td class="r"><strong>${g.enabled||g.id===999?fmt(g.sip):'—'}</strong></td>
+    </tr>`).join('')}
+    <tr class="trow">
+      <td colspan="7">Total Monthly SIP (active goals only)</td>
+      <td class="r">${fmt(totalSip)}</td>
+    </tr>
+    </tbody></table>`;
+}
+
+function renderSipGauge(totalSip, surplus, gap){
+  const max   = Math.max(totalSip, surplus) * 1.12;
+  const needP = (totalSip/max*88).toFixed(1);
+  const availP= (surplus/max*88).toFixed(1);
+  const ok    = gap <= 0;
+  document.getElementById('sipPanel').innerHTML = `
+    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+      <span>SIP Needed: <strong>${fmt(totalSip)}/mo</strong></span>
+      <span>Surplus: <strong style="color:var(--${ok?'sage':'rose'})">${fmt(surplus)}/mo</strong></span>
+    </div>
+    <div class="sip-track">
+      <div class="sip-bar" style="width:${needP}%">SIP Required: ${fmt(totalSip)}/mo</div>
+      <div class="sip-line" style="left:${availP}%"></div>
+      <div class="sip-line-lbl" style="left:${availP}%">Surplus ↑</div>
+    </div>
+    <div style="display:flex;justify-content:center;margin-top:16px">
+      <div class="alert ${ok?'good':'bad'}" style="max-width:480px;margin:0">
+        <div class="ai">${ok?'✅':'⚠️'}</div>
+        <div>${ok
+          ?`<strong>Surplus covers all goals!</strong> You have <strong>${fmt(Math.abs(gap))}</strong> extra per month. Consider topping up goals or building a buffer.`
+          :`<strong>Monthly shortfall: ${fmt(gap)}</strong> — Try reducing some goal values, extending timelines, disabling non-critical goals, or increasing income.`
+        }</div>
+      </div>
+    </div>`;
+}
+
+function renderBuckets(buckets, emergency, total, p, lastSelfAge, retireYear){
+  const bCls = ['ba','bb','bc'];
+  document.getElementById('bucketsRow').innerHTML = buckets.map((b,i)=>`
+    <div class="bbox ${bCls[i]}">
+      <div class="btag">${b.tag}</div>
+      <div class="btitle">${b.name}</div>
+      <div class="bage">Age ${b.ageRange} · ${b.years} years</div>
+      <div class="bstat"><span class="bk">Corpus at Bucket Start</span><span class="bv">${fmt(b.corpus)}</span></div>
+      <div class="bstat"><span class="bk">Needed at Retirement</span><span class="bv">${fmt(b.atRetire)}</span></div>
+      <div class="bstat"><span class="bk">Growth Rate</span><span class="bv">${(b.growth*100).toFixed(1)}%</span></div>
+      <div class="bstat"><span class="bk">Share of Total</span><span class="bv">${(b.atRetire/total*100).toFixed(1)}%</span></div>
+    </div>`).join('');
+
+  const totalBkt = buckets.reduce((s,b)=>s+b.atRetire,0);
+  document.getElementById('bucketSummary').innerHTML = `
+    <div><div class="bsi-lbl">Buckets A+B+C</div><div class="bsi-val">${fmt(totalBkt)}</div></div>
+    <div style="color:var(--border);font-size:20px;line-height:1">+</div>
+    <div><div class="bsi-lbl">Emergency (5%)</div><div class="bsi-val">${fmt(emergency)}</div></div>
+    <div style="color:var(--border);font-size:20px;line-height:1">=</div>
+    <div><div class="bsi-lbl">Total Corpus Required</div><div class="bsi-val" style="color:var(--teal)">${fmt(total)}</div></div>
+    <div style="border-left:1px solid var(--border);padding-left:20px">
+      <div class="bsi-lbl">Covers until age ${lastSelfAge} · Retires ${retireYear}</div>
+      <div class="bsi-val" style="font-size:13px;color:var(--muted)">Both persons covered</div>
+    </div>`;
+}
+
+function renderNW(proj){
+  const maxNW = Math.max(...proj.map(p=>p.nw));
+  document.getElementById('nwBars').innerHTML = proj.map(p=>{
+    const pct = Math.max(6,(p.nw/maxNW*90)).toFixed(1);
+    const h   = Math.round(180 + (p.nw/maxNW)*40);
+    return `<div class="nw-row">
+      <div class="nw-yr">${p.year}</div>
+      <div class="nw-age">Age ${p.age}</div>
+      <div class="nw-track"><div class="nw-fill" style="width:${pct}%;background:hsl(${h},55%,35%)">${fmt(p.nw)}</div></div>
+      <div class="nw-val">${fmt(p.nw)}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderWithdrawals(ws){
+  const bColor = {A:'bt',B:'bs',C:'ba2'};
+  document.getElementById('withdrawalTable').innerHTML = `<table>
+    <thead><tr>
+      <th>Person 1</th><th>Person 2</th><th>Year</th><th>Bucket</th>
+      <th class="r">Annual Withdrawal</th><th class="r">Monthly</th>
+    </tr></thead>
+    <tbody>${ws.map(w=>`<tr>
+      <td>Age ${w.selfAge}</td>
+      <td>Age ${w.spouseAge}</td>
+      <td><span class="badge bt">${w.year}</span></td>
+      <td><span class="badge ${bColor[w.bucket]}">${w.bucket}</span></td>
+      <td class="r">${fmt(w.amount)}</td>
+      <td class="r">${fmt(w.amount/12)}</td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+// ═══════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════
+initSliders();
+updateChildrenFields();
+renderGoals();
+compute();
+</script>
+</body>
+</html>
